@@ -1,0 +1,120 @@
+# Nepal Corporate Network - Custom Snort Rules
+# Network-Based Intrusion Alert System with Advanced IP Logging for Corporate Offices in Nepal
+# Format: action proto src_ip src_port -> dst_ip dst_port (msg:"message"; sid:SID; rev:REV; priority:PRI;)
+
+# ==============================================================================
+# PORT SCANNING DETECTION RULES
+# ==============================================================================
+
+# Detect Nmap SYN scan - Multiple SYN packets to different ports
+# Priority: 1 (High)
+alert tcp $EXTERNAL_NET any -> $HOME_NET any (msg:"NIDS: Nmap SYN Scan Detected"; flags:S; threshold:type both, track by_src, count 12, seconds 15; sid:9000001; rev:2; priority:1;)
+
+# Detect Nmap FIN scan (stealth scan)
+# Priority: 1 (High)
+alert tcp $EXTERNAL_NET any -> $HOME_NET any (msg:"NIDS: Nmap FIN Scan Detected"; flags:F; threshold:type both, track by_src, count 6, seconds 15; sid:9000002; rev:2; priority:1;)
+
+# Detect Nmap NULL scan
+# Priority: 1 (High)
+alert tcp $EXTERNAL_NET any -> $HOME_NET any (msg:"NIDS: Nmap NULL Scan Detected"; flags:0; threshold:type both, track by_src, count 6, seconds 15; sid:9000003; rev:2; priority:1;)
+
+# Detect Nmap Xmas scan
+# Priority: 1 (High)
+alert tcp $EXTERNAL_NET any -> $HOME_NET any (msg:"NIDS: Nmap Xmas Scan Detected"; flags:FPU; threshold:type both, track by_src, count 6, seconds 15; sid:9000004; rev:2; priority:1;)
+
+# ==============================================================================
+# SSH BRUTE FORCE DETECTION RULES
+# ==============================================================================
+
+# Detect SSH brute force / connection storm - repeated connection attempts
+# Priority: 1 (High)
+alert tcp $EXTERNAL_NET any -> $HOME_NET 22 (msg:"NIDS: SSH Brute Force / Connection Attempts"; flags:S; threshold:type both, track by_src, count 10, seconds 60; sid:9000005; rev:3; priority:1;)
+
+# Disabled: SSH credentials and failure messages are encrypted on the wire.
+# These rules created misleading "root login" or "failed password" alerts from
+# payload text that Snort cannot reliably see in normal SSH traffic.
+# alert tcp $EXTERNAL_NET any -> $HOME_NET 22 (msg:"NIDS: SSH Login Failure Pattern"; flow:to_server,established; content:"Failed password"; nocase; threshold:type both, track by_src, count 3, seconds 30; sid:9000006; rev:1; priority:2;)
+# alert tcp $EXTERNAL_NET any -> $HOME_NET 22 (msg:"NIDS: SSH Root Login Attempt"; flow:to_server,established; content:"root"; nocase; sid:9000007; rev:1; priority:1;)
+
+# ==============================================================================
+# FTP BRUTE FORCE DETECTION RULES
+# ==============================================================================
+
+# Detect FTP brute force / connection storm - repeated connection attempts
+# Priority: 1 (High)
+alert tcp $EXTERNAL_NET any -> $HOME_NET 21 (msg:"NIDS: FTP Brute Force / Connection Attempts"; flags:S; threshold:type both, track by_src, count 10, seconds 60; sid:9000008; rev:3; priority:1;)
+
+# Disabled: FTP login result/user parsing is application-level and easy to get
+# wrong from raw packets. The project keeps network-level connection attempts.
+# alert tcp $EXTERNAL_NET any -> $HOME_NET 21 (msg:"NIDS: FTP Login Failure"; flow:to_server,established; content:"530"; within:20; sid:9000009; rev:1; priority:2;)
+# alert tcp $EXTERNAL_NET any -> $HOME_NET 21 (msg:"NIDS: FTP Anonymous Login Attempt"; flow:to_server,established; content:"anonymous"; nocase; sid:9000010; rev:1; priority:3;)
+
+# ==============================================================================
+# ICMP FLOOD / PING OF DEATH DETECTION RULES
+# ==============================================================================
+
+# Detect ICMP flood - More than 10 ICMP packets in 1 second
+# Priority: 1 (High)
+alert icmp $EXTERNAL_NET any -> $HOME_NET any (msg:"NIDS: ICMP Flood Attack Detected"; itype:8; threshold:type both, track by_src, count 20, seconds 2; sid:9000011; rev:2; priority:1;)
+
+# Detect Ping of Death - Oversized ICMP packet
+# Priority: 1 (High)
+alert icmp $EXTERNAL_NET any -> $HOME_NET any (msg:"NIDS: Ping of Death Detected - Oversized ICMP Packet"; itype:8; dsize:600; sid:9000012; rev:1; priority:1;)
+
+# Detect ICMP sweep scan
+# Priority: 2 (Medium)
+alert icmp $EXTERNAL_NET any -> $HOME_NET any (msg:"NIDS: ICMP Sweep Scan Detected"; itype:8; threshold:type both, track by_src, count 30, seconds 10; sid:9000013; rev:2; priority:2;)
+
+# ==============================================================================
+# WEB APPLICATION RULES DISABLED BY PROJECT SCOPE
+# ==============================================================================
+#
+# AlertMesh is scoped as a network/IP detection project. SQL injection, XSS,
+# command injection, and application URL checks belong to a WAF/web-app scanner,
+# so those rules are intentionally disabled here.
+
+# DNS flood/amplification rules are omitted to keep this project focused on
+# four practical categories: port scans, ICMP attacks, brute-force attempts,
+# and exposed network service access.
+
+# ==============================================================================
+# TELNET CONNECTION ATTEMPTS (INSECURE PROTOCOL)
+# ==============================================================================
+
+# Detect Telnet connection attempt - Insecure protocol
+# Priority: 1 (High)
+alert tcp $EXTERNAL_NET any -> $HOME_NET 23 (msg:"NIDS: Telnet Connection Attempt - Insecure Protocol"; flags:S; threshold:type both, track by_src, count 3, seconds 60; sid:9000024; rev:3; priority:1;)
+
+# Disabled: application login string matching is outside this network/IP scope.
+# alert tcp $EXTERNAL_NET any -> $HOME_NET 23 (msg:"NIDS: Telnet Login Attempt"; flow:to_server,established; content:"login"; nocase; sid:9000025; rev:1; priority:2;)
+
+# ==============================================================================
+# RDP BRUTE FORCE RULES
+# ==============================================================================
+
+# Detect RDP brute force - Multiple connection attempts
+# Priority: 1 (High)
+alert tcp $EXTERNAL_NET any -> $HOME_NET 3389 (msg:"NIDS: RDP Brute Force / Connection Attempts"; flags:S; threshold:type both, track by_src, count 10, seconds 60; sid:9000026; rev:3; priority:1;)
+
+# Detect RDP connection from external network
+# Priority: 2 (Medium)
+alert tcp $EXTERNAL_NET any -> $HOME_NET 3389 (msg:"NIDS: RDP Connection from External Network"; flags:S; threshold:type both, track by_src, count 3, seconds 60; sid:9000027; rev:3; priority:2;)
+
+# ==============================================================================
+# ADDITIONAL CORPORATE NETWORK SECURITY RULES
+# ==============================================================================
+
+# Detect SMB connection attempt (often targeted in ransomware)
+# Priority: 1 (High)
+alert tcp $EXTERNAL_NET any -> $HOME_NET 445 (msg:"NIDS: SMB Connection Attempt - Ransomware Risk"; flags:S; threshold:type both, track by_src, count 3, seconds 60; sid:9000028; rev:3; priority:1;)
+
+# Detect NetBIOS connection attempt
+# Priority: 2 (Medium)
+alert tcp $EXTERNAL_NET any -> $HOME_NET 139 (msg:"NIDS: NetBIOS Connection Attempt"; flags:S; threshold:type both, track by_src, count 3, seconds 60; sid:9000029; rev:3; priority:2;)
+
+# HTTP/web-application rules removed from active set for project scope.
+
+# ==============================================================================
+# END OF NEPAL CORPORATE NETWORK RULES
+# ==============================================================================
+
